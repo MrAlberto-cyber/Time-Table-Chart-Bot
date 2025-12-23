@@ -1,0 +1,334 @@
+/* Reset default styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #121212;
+  color: #ffffff;
+  line-height: 1.6;
+  padding: 20px;
+  /* Background image with overlay */
+  background-image: url('https://t3.ftcdn.net/jpg/04/02/45/80/240_F_402458024_uZDZt5lfRWOqioQuEOK5FFt49lKmlFGW.jpg'); /* Placeholder: Study-themed background */
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* Dark overlay to ensure text readability */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7); /* Dark overlay with 70% opacity */
+  z-index: -1;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative; /* Ensure container sits above the overlay */
+}
+
+.main-heading {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.main-heading h1 {
+  font-size: 2.5rem;
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+.main-heading p {
+  font-size: 1.1rem;
+  color: #b0b0b0;
+}
+
+/* Chatbot Container */
+.chatbot-container {
+  background-color: #1e2a38;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chat Messages */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  padding-right: 10px;
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: #2d3748;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #6e8efb;
+  border-radius: 3px;
+}
+
+.message {
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  max-width: 80%;
+}
+
+.bot-message {
+  background-color: #2d3748;
+  color: #ffffff;
+  margin-right: auto;
+  border: 1px solid #4682B4;
+}
+
+.user-message {
+  background-color: #4682B4;
+  color: #ffffff;
+  margin-left: auto;
+  border: 1px solid #6e8efb;
+}
+
+/* Input Container */
+.input-container {
+  display: flex;
+  gap: 10px;
+}
+
+#userInput {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #4682B4;
+  border-radius: 5px;
+  background-color: #2d3748;
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+#userInput:focus {
+  outline: none;
+  border-color: #6e8efb;
+}
+
+#sendButton {
+  padding: 10px 20px;
+  background: linear-gradient(90deg, #6e8efb, #a777e3);
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s ease;
+}
+
+#sendButton:hover {
+  background: linear-gradient(90deg, #a777e3, #6e8efb);
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background-color: #6e8efb;
+  border-radius: 50%;
+  animation: bounce 0.6s infinite alternate;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes bounce {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-5px);
+  }
+}
+
+.hidden {
+  display: none;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  margin-top: 30px;
+  color: #b0b0b0;
+}
+
+.footer-title {
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.footer-column {
+  text-align: left;
+}
+
+.name, .roll, .reg {
+  font-size: 0.9rem;
+}
+
+/* Timetable Styling */
+.section-heading {
+  font-size: 1.5rem;
+  color: #6e8efb;
+  margin-bottom: 15px;
+}
+
+.sub-heading {
+  font-size: 1.2rem;
+  color: #a777e3;
+  margin-bottom: 10px;
+  margin-top: 10px;
+}
+
+.schedule-details {
+  background-color: #2d3748;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.detail-label {
+  color: #b0b0b0;
+}
+
+.detail-value {
+  color: #ffffff;
+}
+
+.timetable-section {
+  margin-bottom: 15px;
+}
+
+.timetable-content {
+  background-color: #2d3748;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.timetable-content p, .timetable-content ul {
+  margin-bottom: 10px;
+}
+
+.timetable-content li {
+  margin-left: 20px;
+}
+
+.tips-section {
+  margin-bottom: 15px;
+}
+
+.tip-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.tip-icon {
+  font-size: 1.2rem;
+}
+
+.tip-text {
+  color: #ffffff;
+}
+
+.note-section {
+  background-color: #2d3748;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.note-title {
+  font-size: 1.1rem;
+  color: #a777e3;
+  margin-bottom: 10px;
+}
+
+.schedule-note {
+  color: #b0b0b0;
+  font-size: 0.9rem;
+}
+
+.schedule-note li {
+  margin-left: 20px;
+  margin-bottom: 5px;
+}
+
+/* Table Styling for Box-like Timetable */
+.timetable-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background-color: #2d3748;
+  border: 1px solid #4682B4;
+}
+
+.timetable-table th, .timetable-table td {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #4682B4;
+  color: #ffffff;
+}
+
+.timetable-table th {
+  background: linear-gradient(90deg, #6e8efb, #a777e3);
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.timetable-table td {
+  background-color: #2d3748;
+}
+
+.timetable-table .even-row {
+  background-color: #3a4655;
+}
+
+.timetable-table .odd-row {
+  background-color: #2d3748;
+}
