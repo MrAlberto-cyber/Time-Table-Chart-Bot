@@ -1,0 +1,369 @@
+const GEMINI_API_KEY = 'AIzaSyBm_19XcHK3SUHa7kNwCdhe3z93eKcEixI';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+// State management
+let conversationState = {
+  step: 1,
+  subjects: [], // Array of { name, toughness } objects
+  numberOfSubjects: null, // Total number of subjects
+  isWeekday: null
+};
+
+// DOM Elements
+const chatMessages = document.querySelector('.chat-messages');
+const userInput = document.getElementById('userInput');
+const sendButton = document.getElementById('sendButton');
+const typingIndicator = document.querySelector('.typing-indicator');
+
+// Initialize the chatbot
+function initChatbot() {
+  addMessage("👋 Hey! I’m your Schedule Assistant. Let’s set up your study timetable!", 'bot');
+  addMessage("📚 How many subjects are you preparing? (Minimum 2)", 'bot');
+}
+
+// Add a message to the chat
+function addMessage(text, type) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${type}-message`;
+  messageDiv.innerHTML = text;
+  chatMessages.appendChild(messageDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Show typing indicator
+function showTypingIndicator() {
+  typingIndicator.classList.remove('hidden');
+}
+
+// Hide typing indicator
+function hideTypingIndicator() {
+  typingIndicator.classList.add('hidden');
+}
+
+// Generate content using Gemini API (for explanation, tips, interruptions)
+async function generateContent(prompt) {
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('API request failed');
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error('Error generating content:', error);
+    throw error;
+  }
+}
+
+// Generate timetable locally
+function generateTimetable(subjects, isWeekday) {
+  const durations = {
+    high: 2 * 60, // 2 hours in minutes
+    medium: 1.5 * 60, // 1.5 hours in minutes
+    low: 1 * 60 // 1 hour in minutes
+  };
+
+  // Sort subjects by toughness: High > Medium > Low
+  const sortedSubjects = subjects.sort((a, b) => {
+    const order = { high: 3, medium: 2, low: 1 };
+    return order[b.toughness] - order[a.toughness];
+  });
+
+  let timetableLines = [];
+  let currentTime;
+
+  if (isWeekday) {
+    // Weekday: 5:00 AM–8:00 AM and 6:00 PM–9:00 PM
+    currentTime = new Date();
+    currentTime.setHours(5, 0, 0); // Start at 5:00 AM
+
+    const morningEnd = new Date(currentTime);
+    morningEnd.setHours(8, 0, 0); // Morning ends at 8:00 AM
+
+    const eveningStart = new Date();
+    eveningStart.setHours(18, 0, 0); // Evening starts at 6:00 PM
+    const eveningEnd = new Date();
+    eveningEnd.setHours(21, 0, 0); // Evening ends at 9:00 PM
+
+    for (const subject of sortedSubjects) {
+      const duration = durations[subject.toughness];
+      const endTime = new Date(currentTime.getTime() + duration * 60 * 1000);
+
+      if (currentTime < morningEnd) {
+        // Schedule in morning slot
+        if (endTime <= morningEnd) {
+          timetableLines.push(`${subject.name}: ${formatTime(currentTime)} - ${formatTime(endTime)}`);
+          currentTime = endTime;
+        } else {
+          // Move to evening slot
+          currentTime = eveningStart;
+          const newEndTime = new Date(currentTime.getTime() + duration * 60 * 1000);
+          if (newEndTime <= eveningEnd) {
+            timetableLines.push(`${subject.name}: ${formatTime(currentTime)} - ${formatTime(newEndTime)}`);
+            currentTime = newEndTime;
+          }
+        }
+      } else if (currentTime >= eveningStart && currentTime < eveningEnd) {
+        // Schedule in evening slot
+        if (endTime <= eveningEnd) {
+          timetableLines.push(`${subject.name}: ${formatTime(currentTime)} - ${formatTime(endTime)}`);
+          currentTime = endTime;
+        }
+      }
+    }
+  } else {
+    // Weekend: 9:00 AM–5:00 PM
+    currentTime = new Date();
+    currentTime.setHours(9, 0, 0); // Start at 9:00 AM
+
+    const dayEnd = new Date(currentTime);
+    dayEnd.setHours(17, 0, 0); // End at 5:00 PM
+
+    for (const subject of sortedSubjects) {
+      const duration = durations[subject.toughness];
+      const endTime = new Date(currentTime.getTime() + duration * 60 * 1000);
+
+      if (endTime <= dayEnd) {
+        timetableLines.push(`${subject.name}: ${formatTime(currentTime)} - ${formatTime(endTime)}`);
+        currentTime = endTime;
+      }
+    }
+  }
+
+  return timetableLines;
+}
+
+// Helper function to format time in 12-hour format with AM/PM
+function formatTime(date) {
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12; // Convert 0 to 12 for midnight
+  return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+}
+
+// Handle user input
+async function handleUserInput() {
+  const input = userInput.value.trim();
+  if (!input) return;
+
+  addMessage(input, 'user');
+  userInput.value = '';
+
+  switch (conversationState.step) {
+    case 1:
+      await handleNumberOfSubjects(input);
+      break;
+    case 2:
+      await handleSubjectsInput(input);
+      break;
+    case 3:
+      await handleWeekdayOrWeekend(input);
+      break;
+  }
+}
+
+// Handle number of subjects input
+async function handleNumberOfSubjects(input) {
+  const numberOfSubjects = parseInt(input);
+  if (isNaN(numberOfSubjects) || numberOfSubjects < 2) {
+    addMessage("❌ Please enter a valid number of subjects (2 or more).", 'bot');
+    return;
+  }
+
+  conversationState.numberOfSubjects = numberOfSubjects;
+  conversationState.step = 2;
+  conversationState.subjects = [];
+
+  addMessage(`📖 Please enter ${numberOfSubjects} subjects and their toughness levels, separated by commas. Example: "Math - High, Physics - Medium, English - Low"`, 'bot');
+}
+
+// Handle subjects and toughness input in one go
+async function handleSubjectsInput(input) {
+  const subjectEntries = input.split(',').map(entry => entry.trim());
+  if (subjectEntries.length !== conversationState.numberOfSubjects) {
+    addMessage(`❌ Please enter exactly ${conversationState.numberOfSubjects} subjects, separated by commas.`, 'bot');
+    return;
+  }
+
+  const validToughness = ['low', 'medium', 'high'];
+  const subjects = [];
+
+  for (const entry of subjectEntries) {
+    const parts = entry.split('-').map(part => part.trim());
+    if (parts.length !== 2) {
+      addMessage(`❌ Invalid format for "${entry}". Use "Subject - Toughness" (e.g., "Math - High").`, 'bot');
+      return;
+    }
+
+    const subjectName = parts[0];
+    const toughness = parts[1].toLowerCase();
+    if (!validToughness.includes(toughness)) {
+      addMessage(`❌ Invalid toughness for "${subjectName}". Use Low, Medium, or High.`, 'bot');
+      return;
+    }
+
+    subjects.push({ name: subjectName, toughness });
+  }
+
+  conversationState.subjects = subjects;
+  conversationState.step = 3;
+
+  addMessage("📅 Is this a weekday or weekend schedule?", 'bot');
+}
+
+// Handle weekday or weekend input
+async function handleWeekdayOrWeekend(input) {
+  const dayType = input.toLowerCase();
+  if (!['weekday', 'weekend'].includes(dayType)) {
+    addMessage("❌ Please enter either Weekday or Weekend.", 'bot');
+    return;
+  }
+
+  conversationState.isWeekday = dayType === 'weekday';
+  showTypingIndicator();
+
+  try {
+    // Generate timetable locally
+    const timetableLines = generateTimetable(conversationState.subjects, conversationState.isWeekday);
+
+    // Use Gemini API for explanation, tips, and interruptions
+    const timeWindow = conversationState.isWeekday 
+      ? "5:00 AM–8:00 AM (morning) and 6:00 PM–9:00 PM (evening)" 
+      : "9:00 AM–5:00 PM";
+    const prompt = `Provide additional context for a study timetable with the following details:
+    Subjects to Prepare: ${conversationState.subjects.map(s => `${s.name} (Toughness: ${s.toughness})`).join(', ')}
+    Schedule Type: ${conversationState.isWeekday ? 'Daily (Weekday)' : 'Daily (Weekend)'}
+    Time Windows: ${timeWindow}
+
+    Requirements:
+    - The timetable itself is already generated, so do not generate time slots.
+    - Time allocation is based on subject toughness: High (2 hours), Medium (1.5 hours), Low (1 hour).
+    - High-toughness subjects are scheduled earlier within the given time windows.
+
+    Provide:
+    1. A brief explanation of how the timetable is structured (mention toughness-based time allocation, time windows, and day type), formatted as HTML with <p>, <ul>, <li>, <strong>.
+    2. 3-4 specific tips for sticking to the timetable, formatted as HTML with <p>, <ul>, <li>, <strong>.
+    3. Suggestions for handling unexpected interruptions, formatted as HTML with <p>, <ul>, <li>, <strong>.
+    Use emojis (e.g., 📝, ⏰, 🚨) for better readability. Separate each section with "===" on a new line.`;
+
+    const additionalContent = await generateContent(prompt);
+    const sections = additionalContent.split('===');
+    const explanation = sections[0].trim();
+    const tips = sections[1].trim();
+    const interruptions = sections[2].trim();
+
+    hideTypingIndicator();
+    addMessage(formatTimetable({
+      subjects: conversationState.subjects,
+      isWeekday: conversationState.isWeekday,
+      timetable: {
+        explanation: explanation,
+        timetableLines: timetableLines,
+        tips: tips,
+        interruptions: interruptions
+      }
+    }), 'bot');
+
+  } catch (error) {
+    hideTypingIndicator();
+    addMessage("❌ Sorry, there was an error generating the timetable. Please try again.", 'bot');
+    console.error('Error:', error);
+  }
+
+  // Reset to initial step
+  conversationState.step = 1;
+  conversationState.subjects = [];
+  conversationState.numberOfSubjects = null;
+  conversationState.isWeekday = null;
+}
+
+// Format timetable output
+function formatTimetable(data) {
+  const { explanation, timetableLines, tips, interruptions } = data.timetable;
+
+  // Convert timetable lines into table rows with Subject and Time Slot
+  let timetableTable = `
+    <table class="timetable-table">
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th>Time Slot</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  timetableLines.forEach((line, index) => {
+    const [subject, timeSlot] = line.split(':').map(part => part.trim());
+    timetableTable += `
+      <tr class="${index % 2 === 0 ? 'even-row' : 'odd-row'}">
+        <td>${subject}</td>
+        <td>${timeSlot}</td>
+      </tr>
+    `;
+  });
+  timetableTable += `
+      </tbody>
+    </table>
+  `;
+
+  return `<div class="section-heading">📅 Personalized Timetable</div>
+
+<div class="sub-heading">📊 Schedule Details</div>
+<div class="schedule-details">
+    <div class="detail-item">
+        <span class="detail-label">Subjects</span>
+        <span class="detail-value">${data.subjects.map(s => `${s.name} (${s.toughness.charAt(0).toUpperCase() + s.toughness.slice(1)})`).join(', ')}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Schedule Type</span>
+        <span class="detail-value">${data.isWeekday ? 'Weekday' : 'Weekend'} Daily</span>
+    </div>
+</div>
+
+<div class="timetable-section">
+    <div class="sub-heading">⏰ Your Timetable</div>
+    <div class="timetable-content">${explanation}</div>
+    <div class="timetable-content">${timetableTable}</div>
+    <div class="timetable-content">${interruptions}</div>
+</div>
+
+<div class="sub-heading">🎯 Tips for Success</div>
+<div class="tips-section">
+    ${tips}
+</div>
+
+<div class="note-section">
+    <div class="note-title">📝 Important Notes</div>
+    <div class="schedule-note">
+        • The timetable is tailored for a ${data.isWeekday ? 'weekday with long breaks' : 'weekend with short breaks'}
+        • Includes breaks to maintain productivity
+        • Review and adjust as needed
+    </div>
+</div>`;
+}
+
+// Event Listeners
+sendButton.addEventListener('click', handleUserInput);
+userInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    handleUserInput();
+  }
+});
+
+// Initialize the chatbot when the page loads
+document.addEventListener('DOMContentLoaded', initChatbot);
